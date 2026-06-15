@@ -288,12 +288,15 @@ function renderLibrary() {
 }
 
 function renderWordCard(w, showActions = false) {
+  const head = w.kanji || w.japanese;
+  const hasKana = w.kanji && w.japanese && w.kanji !== w.japanese;
   return `
     <div class="word-card">
       <div class="word-card-top">
         <span class="vn">${escHtml(w.vietnamese)}</span>
-        <span class="jp">${escHtml(w.japanese)}</span>
+        <span class="jp">${escHtml(head)}</span>
       </div>
+      ${hasKana ? `<div class="kana">${escHtml(w.japanese)}</div>` : ''}
       <div class="rmj">${escHtml(w.romaji)}</div>
       ${w.pattern ? `<div class="pattern">${escHtml(w.pattern)}</div>` : ''}
       ${showActions ? `
@@ -528,7 +531,8 @@ function checkAnswer() {
       <div class="result-icon">${allCorrect ? '✅ Chính xác!' : '❌ Chưa đúng'}</div>
       ${!allCorrect ? `
         <div>
-          <div class="correct-answer">Đáp án: ${escHtml(item.japanese)}</div>
+          <div class="correct-answer">Đáp án: ${escHtml(item.kanji || item.japanese)}</div>
+          ${item.kanji && item.kanji !== item.japanese ? `<div class="correct-answer-kana">${escHtml(item.japanese)}</div>` : ''}
           <div class="correct-answer-romaji">${escHtml(item.romaji)}</div>
         </div>
       ` : ''}
@@ -581,7 +585,8 @@ function showAnswer() {
     <div class="result-feedback wrong">
       <div class="result-icon">👀 Đáp án</div>
       <div>
-        <div class="correct-answer">${escHtml(item.japanese)}</div>
+        <div class="correct-answer">${escHtml(item.kanji || item.japanese)}</div>
+        ${item.kanji && item.kanji !== item.japanese ? `<div class="correct-answer-kana">${escHtml(item.japanese)}</div>` : ''}
         <div class="correct-answer-romaji">${escHtml(item.romaji)}</div>
       </div>
     </div>

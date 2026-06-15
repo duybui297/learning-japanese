@@ -318,6 +318,14 @@ h1, h2, h3 {
   color: var(--accent);
 }
 
+.word-card .kana {
+  font-family: var(--font-jp);
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  text-align: right;
+  margin-top: 2px;
+}
+
 .word-card .rmj {
   font-size: 0.85rem;
   color: var(--text-secondary);
@@ -654,6 +662,12 @@ h1, h2, h3 {
   font-family: var(--font-jp);
   font-size: 1.2rem;
   font-weight: 600;
+}
+
+.result-feedback .correct-answer-kana {
+  font-family: var(--font-jp);
+  font-size: 1rem;
+  color: var(--text-secondary);
 }
 
 .result-feedback .correct-answer-romaji {
