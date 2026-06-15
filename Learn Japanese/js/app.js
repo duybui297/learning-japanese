@@ -27,6 +27,8 @@ let state = {
   practiceChecked: false,
   // Edit state
   editingId: null,
+  // Grammar detail
+  grammarId: null,
 };
 
 // ── Storage ──
@@ -113,6 +115,7 @@ function render() {
     practice: renderPractice,
     results: renderResults,
     'add-word': renderAddWord,
+    'grammar-detail': renderGrammarDetail,
   };
 
   const renderFn = screens[state.screen] || renderHome;
@@ -142,6 +145,8 @@ function handleAction(e) {
     // Navigation
     case 'goto-home': navigate('home'); break;
     case 'goto-library-prebuilt': navigate('library-prebuilt', { librarySource: 'prebuilt', libraryType: 'vocabulary', libraryFilter: 'Tất cả' }); break;
+    case 'view-grammar': navigate('grammar-detail', { grammarId: data.id }); break;
+    case 'back-to-grammar': navigate('library-prebuilt', { librarySource: 'prebuilt', libraryType: 'grammar' }); break;
     case 'goto-library-custom': navigate('library-custom', { librarySource: 'custom', libraryType: 'vocabulary', libraryFilter: 'Tất cả' }); break;
     case 'goto-practice-select': navigate('practice-select'); break;
     case 'goto-add-word': navigate('add-word', { editingId: null }); break;
@@ -290,8 +295,9 @@ function renderLibrary() {
 function renderWordCard(w, showActions = false) {
   const head = w.kanji || w.japanese;
   const hasKana = w.kanji && w.japanese && w.kanji !== w.japanese;
+  const hasLesson = w.type === 'grammar' && w.structure;
   return `
-    <div class="word-card">
+    <div class="word-card ${hasLesson ? 'word-card-clickable' : ''}" ${hasLesson ? `data-action="view-grammar" data-id="${w.id}" role="button" tabindex="0"` : ''}>
       <div class="word-card-top">
         <span class="vn">${escHtml(w.vietnamese)}</span>
         <span class="jp">${escHtml(head)}</span>
@@ -299,12 +305,79 @@ function renderWordCard(w, showActions = false) {
       ${hasKana ? `<div class="kana">${escHtml(w.japanese)}</div>` : ''}
       <div class="rmj">${escHtml(w.romaji)}</div>
       ${w.pattern ? `<div class="pattern">${escHtml(w.pattern)}</div>` : ''}
+      ${hasLesson ? `<div class="lesson-hint">Xem bài giảng chi tiết →</div>` : ''}
       ${showActions ? `
         <div class="word-card-actions">
           <button data-action="edit-word" data-id="${w.id}">✏️ Sửa</button>
           <button class="delete-btn" data-action="delete-word" data-id="${w.id}">🗑 Xóa</button>
         </div>
       ` : ''}
+    </div>
+  `;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// SCREEN: GRAMMAR DETAIL (bài giảng)
+// ══════════════════════════════════════════════════════════════════════════
+
+function renderGrammarDetail() {
+  const g = GRAMMAR.find(x => x.id === state.grammarId);
+  if (!g) return renderLibrary();
+
+  const examples = Array.isArray(g.examples) ? g.examples : [];
+  const notes = Array.isArray(g.notes) ? g.notes : [];
+
+  const exampleCard = (kanji, kana, romaji, vn) => `
+    <div class="ex-item">
+      <div class="ex-jp">${escHtml(kanji)}</div>
+      ${kana && kana !== kanji ? `<div class="ex-kana">${escHtml(kana)}</div>` : ''}
+      <div class="ex-rmj">${escHtml(romaji)}</div>
+      <div class="ex-vn">${escHtml(vn)}</div>
+    </div>
+  `;
+
+  return `
+    <div class="animate-in grammar-detail">
+      <div class="screen-header">
+        <button class="back-btn" data-action="back-to-grammar" aria-label="Quay lại">←</button>
+        <h2>Bài giảng ngữ pháp</h2>
+      </div>
+
+      <div class="gd-hero">
+        <div class="gd-pattern">${escHtml(g.pattern || g.structure)}</div>
+        <div class="gd-meaning">${escHtml(g.vietnamese)}</div>
+      </div>
+
+      <div class="gd-section">
+        <div class="gd-label">📐 Cấu trúc câu</div>
+        <div class="gd-structure">${escHtml(g.structure)}</div>
+      </div>
+
+      ${g.explanation ? `
+        <div class="gd-section">
+          <div class="gd-label">💡 Giải thích &amp; cách dùng</div>
+          <p class="gd-text">${escHtml(g.explanation)}</p>
+        </div>
+      ` : ''}
+
+      ${notes.length ? `
+        <div class="gd-section gd-notes">
+          <div class="gd-label">⚠️ Điểm cần lưu ý</div>
+          <ul class="gd-note-list">
+            ${notes.map(n => `<li>${escHtml(n)}</li>`).join('')}
+          </ul>
+        </div>
+      ` : ''}
+
+      <div class="gd-section">
+        <div class="gd-label">📝 Ví dụ mẫu</div>
+        <div class="ex-list">
+          ${exampleCard(g.kanji, g.japanese, g.romaji, g.vietnamese)}
+          ${examples.map(e => exampleCard(e.kanji, e.japanese, e.romaji, e.vietnamese)).join('')}
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-block btn-lg" data-action="back-to-grammar">← Quay lại danh sách</button>
     </div>
   `;
 }
