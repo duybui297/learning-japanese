@@ -340,7 +340,7 @@ function renderWordCard(w, showActions = false) {
   const head = w.kanji || w.japanese;
   const hasKana = w.kanji && w.japanese && w.kanji !== w.japanese;
   const hasLesson = w.type === 'grammar' && w.structure;
-  const hasVocabDetail = !showActions && w.type === 'vocabulary' && Array.isArray(w.examples) && w.examples.length > 0;
+  const hasVocabDetail = !showActions && w.type === 'vocabulary' && Array.isArray(w.dialogue) && w.dialogue.length > 0;
   const clickAttr = hasLesson
     ? `data-action="view-grammar" data-id="${w.id}" role="button" tabindex="0"`
     : (hasVocabDetail ? `data-action="view-vocab" data-id="${w.id}" role="button" tabindex="0"` : '');
