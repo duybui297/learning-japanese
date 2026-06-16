@@ -92,6 +92,44 @@ function getCustomCategories(type) {
   return [...new Set(words.map(w => w.category).filter(Boolean))];
 }
 
+// ── Text-to-speech (đọc tiếng Nhật) ──
+let _jaVoice = null;
+function pickJaVoice() {
+  if (!('speechSynthesis' in window)) return;
+  const voices = speechSynthesis.getVoices();
+  _jaVoice = voices.find(v => v.lang === 'ja-JP')
+    || voices.find(v => v.lang && v.lang.toLowerCase().startsWith('ja'))
+    || null;
+}
+if ('speechSynthesis' in window) {
+  pickJaVoice();
+  speechSynthesis.onvoiceschanged = pickJaVoice;
+}
+
+function speak(text, btn) {
+  if (!text) return;
+  if (!('speechSynthesis' in window)) {
+    alert('Trình duyệt này không hỗ trợ đọc tiếng Nhật.');
+    return;
+  }
+  speechSynthesis.cancel();
+  if (!_jaVoice) pickJaVoice();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'ja-JP';
+  u.rate = 0.85;
+  if (_jaVoice) u.voice = _jaVoice;
+  if (btn) {
+    btn.classList.add('speaking');
+    u.onend = u.onerror = () => btn.classList.remove('speaking');
+  }
+  speechSynthesis.speak(u);
+}
+
+// Markup for a small speaker button. `text` is the kana/japanese to read aloud.
+function spk(text) {
+  return `<button class="spk-btn" data-action="speak" data-text="${escHtml(text)}" aria-label="Đọc" title="Đọc">🔊</button>`;
+}
+
 function getDataBySource(source, type) {
   if (source === 'prebuilt') {
     return type === 'vocabulary' ? VOCABULARY : GRAMMAR;
@@ -152,6 +190,7 @@ function handleAction(e) {
     case 'back-to-grammar': navigate('library-prebuilt', { librarySource: 'prebuilt', libraryType: 'grammar' }); break;
     case 'view-vocab': navigate('vocab-detail', { vocabId: data.id }); break;
     case 'back-to-vocab': navigate('library-prebuilt', { librarySource: 'prebuilt', libraryType: 'vocabulary' }); break;
+    case 'speak': e.stopPropagation(); speak(el.dataset.text, el); break;
     case 'goto-library-custom': navigate('library-custom', { librarySource: 'custom', libraryType: 'vocabulary', libraryFilter: 'Tất cả' }); break;
     case 'goto-practice-select': navigate('practice-select'); break;
     case 'goto-add-word': navigate('add-word', { editingId: null }); break;
@@ -338,8 +377,8 @@ function renderGrammarDetail() {
   const notes = Array.isArray(g.notes) ? g.notes : [];
 
   const exampleCard = (kanji, kana, romaji, vn) => `
-    <div class="ex-item">
-      <div class="ex-jp">${escHtml(kanji)}</div>
+    <div class="ex-item" data-action="speak" data-text="${escHtml(kana || kanji)}" role="button" tabindex="0" title="Bấm để nghe">
+      <div class="ex-jp">${escHtml(kanji)} ${spk(kana || kanji)}</div>
       ${kana && kana !== kanji ? `<div class="ex-kana">${escHtml(kana)}</div>` : ''}
       <div class="ex-rmj">${escHtml(romaji)}</div>
       <div class="ex-vn">${escHtml(vn)}</div>
@@ -402,17 +441,22 @@ function renderVocabDetail() {
 
   const head = w.kanji || w.japanese;
   const hasKana = w.kanji && w.japanese && w.kanji !== w.japanese;
-  const examples = Array.isArray(w.examples) ? w.examples : [];
+  const lines = Array.isArray(w.dialogue) ? w.dialogue : [];
 
-  const exCard = (e, i) => `
-    <div class="ex-item ${e.type === 'd' ? 'ex-dialogue' : ''}">
-      <div class="ex-badge">${e.type === 'd' ? '💬 Hội thoại' : '✏️ Câu ' + (i + 1)}</div>
-      <div class="ex-jp">${escHtml(e.jp)}</div>
-      <div class="ex-kana">${escHtml(e.kana)}</div>
-      <div class="ex-rmj">${escHtml(e.romaji)}</div>
-      <div class="ex-vn">${escHtml(e.vn)}</div>
-    </div>
-  `;
+  const bubble = (l) => {
+    const isWord = l.jp.includes(head) || (w.japanese && l.jp.includes(w.japanese));
+    return `
+      <div class="bubble-row ${l.sp === 'B' ? 'bubble-right' : 'bubble-left'}">
+        <div class="bubble-sp">${escHtml(l.sp)}</div>
+        <div class="bubble ${isWord ? 'bubble-hl' : ''}" data-action="speak" data-text="${escHtml(l.kana)}" role="button" tabindex="0" title="Bấm để nghe">
+          <div class="bubble-jp">${escHtml(l.jp)} ${spk(l.kana)}</div>
+          <div class="bubble-kana">${escHtml(l.kana)}</div>
+          <div class="bubble-rmj">${escHtml(l.romaji)}</div>
+          <div class="bubble-vn">${escHtml(l.vn)}</div>
+        </div>
+      </div>
+    `;
+  };
 
   return `
     <div class="animate-in grammar-detail">
@@ -422,17 +466,24 @@ function renderVocabDetail() {
       </div>
 
       <div class="gd-hero">
-        <div class="gd-pattern">${escHtml(head)}</div>
+        <div class="gd-pattern">${escHtml(head)} ${spk(w.japanese)}</div>
         ${hasKana ? `<div class="vd-kana">${escHtml(w.japanese)}</div>` : ''}
         <div class="vd-romaji">${escHtml(w.romaji)}</div>
         <div class="gd-meaning">${escHtml(w.vietnamese)}</div>
         <div class="vd-cat">${escHtml(w.category)}</div>
       </div>
 
+      ${w.context ? `
+        <div class="gd-section gd-notes">
+          <div class="gd-label">🎬 Bối cảnh</div>
+          <p class="gd-text">${escHtml(w.context)}</p>
+        </div>
+      ` : ''}
+
       <div class="gd-section">
-        <div class="gd-label">📝 Ví dụ &amp; hội thoại ngắn</div>
-        <div class="ex-list">
-          ${examples.map((e, i) => exCard(e, i)).join('')}
+        <div class="gd-label">💬 Đoạn hội thoại</div>
+        <div class="dialogue-list">
+          ${lines.map(bubble).join('')}
         </div>
       </div>
 
