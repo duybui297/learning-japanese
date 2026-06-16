@@ -29,6 +29,8 @@ let state = {
   editingId: null,
   // Grammar detail
   grammarId: null,
+  // Vocab detail
+  vocabId: null,
 };
 
 // ── Storage ──
@@ -116,6 +118,7 @@ function render() {
     results: renderResults,
     'add-word': renderAddWord,
     'grammar-detail': renderGrammarDetail,
+    'vocab-detail': renderVocabDetail,
   };
 
   const renderFn = screens[state.screen] || renderHome;
@@ -147,6 +150,8 @@ function handleAction(e) {
     case 'goto-library-prebuilt': navigate('library-prebuilt', { librarySource: 'prebuilt', libraryType: 'vocabulary', libraryFilter: 'Tất cả' }); break;
     case 'view-grammar': navigate('grammar-detail', { grammarId: data.id }); break;
     case 'back-to-grammar': navigate('library-prebuilt', { librarySource: 'prebuilt', libraryType: 'grammar' }); break;
+    case 'view-vocab': navigate('vocab-detail', { vocabId: data.id }); break;
+    case 'back-to-vocab': navigate('library-prebuilt', { librarySource: 'prebuilt', libraryType: 'vocabulary' }); break;
     case 'goto-library-custom': navigate('library-custom', { librarySource: 'custom', libraryType: 'vocabulary', libraryFilter: 'Tất cả' }); break;
     case 'goto-practice-select': navigate('practice-select'); break;
     case 'goto-add-word': navigate('add-word', { editingId: null }); break;
@@ -296,8 +301,12 @@ function renderWordCard(w, showActions = false) {
   const head = w.kanji || w.japanese;
   const hasKana = w.kanji && w.japanese && w.kanji !== w.japanese;
   const hasLesson = w.type === 'grammar' && w.structure;
+  const hasVocabDetail = !showActions && w.type === 'vocabulary' && Array.isArray(w.examples) && w.examples.length > 0;
+  const clickAttr = hasLesson
+    ? `data-action="view-grammar" data-id="${w.id}" role="button" tabindex="0"`
+    : (hasVocabDetail ? `data-action="view-vocab" data-id="${w.id}" role="button" tabindex="0"` : '');
   return `
-    <div class="word-card ${hasLesson ? 'word-card-clickable' : ''}" ${hasLesson ? `data-action="view-grammar" data-id="${w.id}" role="button" tabindex="0"` : ''}>
+    <div class="word-card ${hasLesson || hasVocabDetail ? 'word-card-clickable' : ''}" ${clickAttr}>
       <div class="word-card-top">
         <span class="vn">${escHtml(w.vietnamese)}</span>
         <span class="jp">${escHtml(head)}</span>
@@ -306,6 +315,7 @@ function renderWordCard(w, showActions = false) {
       <div class="rmj">${escHtml(w.romaji)}</div>
       ${w.pattern ? `<div class="pattern">${escHtml(w.pattern)}</div>` : ''}
       ${hasLesson ? `<div class="lesson-hint">Xem bài giảng chi tiết →</div>` : ''}
+      ${hasVocabDetail ? `<div class="lesson-hint">Xem ví dụ &amp; hội thoại →</div>` : ''}
       ${showActions ? `
         <div class="word-card-actions">
           <button data-action="edit-word" data-id="${w.id}">✏️ Sửa</button>
@@ -378,6 +388,55 @@ function renderGrammarDetail() {
       </div>
 
       <button class="btn btn-primary btn-block btn-lg" data-action="back-to-grammar">← Quay lại danh sách</button>
+    </div>
+  `;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// SCREEN: VOCAB DETAIL (ví dụ & hội thoại)
+// ══════════════════════════════════════════════════════════════════════════
+
+function renderVocabDetail() {
+  const w = VOCABULARY.find(x => x.id === state.vocabId);
+  if (!w) return renderLibrary();
+
+  const head = w.kanji || w.japanese;
+  const hasKana = w.kanji && w.japanese && w.kanji !== w.japanese;
+  const examples = Array.isArray(w.examples) ? w.examples : [];
+
+  const exCard = (e, i) => `
+    <div class="ex-item ${e.type === 'd' ? 'ex-dialogue' : ''}">
+      <div class="ex-badge">${e.type === 'd' ? '💬 Hội thoại' : '✏️ Câu ' + (i + 1)}</div>
+      <div class="ex-jp">${escHtml(e.jp)}</div>
+      <div class="ex-kana">${escHtml(e.kana)}</div>
+      <div class="ex-rmj">${escHtml(e.romaji)}</div>
+      <div class="ex-vn">${escHtml(e.vn)}</div>
+    </div>
+  `;
+
+  return `
+    <div class="animate-in grammar-detail">
+      <div class="screen-header">
+        <button class="back-btn" data-action="back-to-vocab" aria-label="Quay lại">←</button>
+        <h2>Chi tiết từ vựng</h2>
+      </div>
+
+      <div class="gd-hero">
+        <div class="gd-pattern">${escHtml(head)}</div>
+        ${hasKana ? `<div class="vd-kana">${escHtml(w.japanese)}</div>` : ''}
+        <div class="vd-romaji">${escHtml(w.romaji)}</div>
+        <div class="gd-meaning">${escHtml(w.vietnamese)}</div>
+        <div class="vd-cat">${escHtml(w.category)}</div>
+      </div>
+
+      <div class="gd-section">
+        <div class="gd-label">📝 Ví dụ &amp; hội thoại ngắn</div>
+        <div class="ex-list">
+          ${examples.map((e, i) => exCard(e, i)).join('')}
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-block btn-lg" data-action="back-to-vocab">← Quay lại danh sách</button>
     </div>
   `;
 }
